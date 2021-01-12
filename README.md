@@ -21,7 +21,7 @@ Otherwise you have to copy the binary in a directory of your `$PATH`.
 The plugin can be used whenever `kubectl` is used with *YAML* or *JSON* output.
 
 ```
-kubectl fo [--filter expr1,expr2] ...
+kubectl fo [--filter <expr1>,<expr2>] ...
 ```
 
 Command line examples:
@@ -40,9 +40,9 @@ These fields are always removed from the output:
 
 - `metadata.annotations.'kubectl.kubernetes.io/last-applied-configuration'`
 
-### `--filter` option
+### `--filter` / `-f` option
 
-With the `--filter <filter-expression>` option additional fields can be filtered.
+With the `--filter <filter-expression>` or `-f <filter-expression>` option additional fields can be filtered.
 This is simple alternative for using the advanced `-o jsonpath` output.
 
 The filter expression is a comma separated list of simple JSON path field expressions.

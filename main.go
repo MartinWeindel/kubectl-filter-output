@@ -84,7 +84,7 @@ func getKubectlArgs() ([]string, string, string) {
 				outputType = arg
 				break
 			}
-		} else if i == 0 && arg == "--filter" {
+		} else if i == 0 && (arg == "--filter" || arg == "-f") {
 			lastFilterOption = true
 			skip = 2
 		} else if lastFilterOption {
