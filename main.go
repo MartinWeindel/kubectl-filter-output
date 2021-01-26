@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -42,7 +44,7 @@ func main() {
 }
 
 func parseAndRunCommand() ([]byte, string, []filterPath) {
-	args, outputType, filterExpr := getKubectlArgs()
+	args, pipeFromStdin, outputType, filterExpr := getKubectlArgs()
 
 	filters, err := parseFilters(filterExpr, true)
 	if err != nil {
@@ -52,10 +54,36 @@ func parseAndRunCommand() ([]byte, string, []filterPath) {
 
 	// check that the global output type was set, if it's not set we can not decode the secret
 	if outputType == "" {
-		fmt.Fprintf(os.Stdout, "please set -o flag to json or yaml\n")
-		os.Exit(1)
+		if !pipeFromStdin {
+			fmt.Fprintf(os.Stdout, "please set -o flag to json or yaml\n")
+			os.Exit(1)
+		}
+		outputType = "yaml"
 	}
 
+	var output []byte
+	if !pipeFromStdin {
+		output = runCommand(args)
+	} else {
+		reader := bufio.NewReader(os.Stdin)
+		buf := make([]byte, 2048)
+		for {
+			n, err := reader.Read(buf)
+			if err != nil && err == io.EOF {
+				break
+			}
+			if err != nil {
+				fmt.Fprintf(os.Stdout, "error on reading from pipe: %s\n", err)
+				os.Exit(1)
+			}
+			output = append(output, buf[:n]...)
+		}
+	}
+
+	return output, outputType, append(defaultFilters, filters...)
+}
+
+func runCommand(args []string) []byte {
 	cmd := exec.Command("kubectl", args...)
 
 	var output, errb bytes.Buffer
@@ -67,16 +95,20 @@ func parseAndRunCommand() ([]byte, string, []filterPath) {
 		os.Exit(1)
 	}
 
-	return output.Bytes(), outputType, append(defaultFilters, filters...)
+	return output.Bytes()
 }
 
-func getKubectlArgs() ([]string, string, string) {
+func getKubectlArgs() ([]string, bool, string, string) {
 	skip := 1
 	var outputType, filterExpression string
 	lastOutputOption := false
 	lastFilterOption := false
+	pipeFromStdin := false
 	for i, arg := range os.Args[1:] {
-		if arg == "-o" {
+		if i == 0 && arg == "-i" {
+			pipeFromStdin = true
+			skip++
+		} else if arg == "-o" {
 			lastOutputOption = true
 		} else if lastOutputOption {
 			lastOutputOption = false
@@ -84,13 +116,13 @@ func getKubectlArgs() ([]string, string, string) {
 				outputType = arg
 				break
 			}
-		} else if i == 0 && (arg == "--filter" || arg == "-f") {
+		} else if !lastFilterOption && i == skip-1 && (arg == "--filter" || arg == "-f") {
 			lastFilterOption = true
-			skip = 2
+			skip++
 		} else if lastFilterOption {
 			lastFilterOption = false
 			filterExpression = arg
-			skip = 3
+			skip++
 		} else if arg == "-o=json" || arg == "-ojson" {
 			outputType = "json"
 			break
@@ -100,7 +132,7 @@ func getKubectlArgs() ([]string, string, string) {
 		}
 	}
 
-	return os.Args[skip:], outputType, filterExpression
+	return os.Args[skip:], pipeFromStdin, outputType, filterExpression
 }
 
 func marshal(outputType string, obj interface{}) ([]byte, error) {

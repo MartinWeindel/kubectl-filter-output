@@ -31,6 +31,14 @@ kubectl fo get pod -o json
 kubectl fo --filter metadata,-metadata.label,status get svc kubernetes -oyaml
 ```
 
+It can also be used via pipe:
+```bash
+kubectl get svc kubernetes -o yaml | kubectl-fo -i
+kubectl get pod -o json | kubectl-fo -i -o json
+kubectl get svc kubernetes -oyaml | kubectl-fo -i --filter metadata,-metadata.label,status
+```
+
+
 If no `--filter` is specified, only the default filters are applied.
 These fields are always removed from the output:
 
