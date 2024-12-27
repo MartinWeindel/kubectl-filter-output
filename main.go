@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"strings"
 
-	yaml "gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	machyaml "k8s.io/apimachinery/pkg/util/yaml"
 )
